@@ -51,6 +51,10 @@ pub fn init() -> std::io::Result<()> {
     Ok(())
 }
 
+pub fn get_music_meta_path(id: u64) -> PathBuf {
+    CACHE.join(format!("music_{}.meta.json", id))
+}
+
 pub fn get_music_cache_path(id: u64, rate: u32) -> PathBuf {
     let rate = match rate {
         0 => 128000,

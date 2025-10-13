@@ -10,6 +10,7 @@ use ncm_api::{
     SongInfo, SongList, TargetType, TopList,
 };
 use once_cell::sync::OnceCell;
+use serde_json;
 use std::{cell::RefCell, fs, path::PathBuf, sync::Arc, time::Duration};
 
 use crate::{
@@ -672,7 +673,28 @@ impl NeteaseCloudMusicGtk4Application {
                 let sender = imp.sender.clone();
                 let music_rate = window.settings().uint("music-rate");
                 let path = crate::path::get_music_cache_path(song_info.id, music_rate);
-
+                let metapath = crate::path::get_music_meta_path(song_info.id);
+                let meta_song_info = song_info.clone();
+                MAINCONTEXT.spawn_local_with_priority(Priority::DEFAULT_IDLE, async move {
+                    let mut path = CACHE.clone();
+                    path.push(metapath);
+                    match serde_json::to_string_pretty(&meta_song_info) {
+                        Ok(json_data) => {
+                            if let Err(e) = fs::write(&path, json_data) {
+                                error!(
+                                    "Failed to save song metadata for {}: {:?}",
+                                    meta_song_info.id, e
+                                );
+                            }
+                        }
+                        Err(e) => {
+                            error!(
+                                "Failed to serialize song metadata for {}: {:?}",
+                                meta_song_info.id, e
+                            );
+                        }
+                    }
+                });
                 if !path.exists() {
                     MAINCONTEXT.spawn_local_with_priority(Priority::DEFAULT_IDLE, async move {
                         if song_info.song_url.is_empty() {
